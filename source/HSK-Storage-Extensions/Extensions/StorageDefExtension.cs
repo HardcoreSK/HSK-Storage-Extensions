@@ -36,11 +36,11 @@ namespace HSK_Storage_Extensions {
 
         public override void ResolveReferences(Def parentDef) {
             base.ResolveReferences(parentDef);
-            if (stowingProperties?.quickToStoreItems != null) {
-                stowingProperties.quickToStoreItems.ResolveReferences();
+            if (stowingProperties?.quickToStowItems != null) {
+                stowingProperties.quickToStowItems.ResolveReferences();
             }
-            if (stowingProperties?.slowToStoreItems != null) {
-                stowingProperties.slowToStoreItems.ResolveReferences();
+            if (stowingProperties?.slowToStowItems != null) {
+                stowingProperties.slowToStowItems.ResolveReferences();
             }
         }
     }

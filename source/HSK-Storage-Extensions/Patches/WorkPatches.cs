@@ -12,6 +12,20 @@ using Verse;
 using Verse.AI;
 
 namespace HSK_Storage_Extensions {
+
+    /// <summary>
+    /// Passthrough postfix to modify the set of toils returned for HaulToCell.
+    /// We use the debug name of PossiblyDelay as a convenient place to drop our own wait toil so we can quickly
+    /// iterate through the collection without using indexes. 
+    /// As this method is only called when the job is being assigned, performance impact should be near zero.
+    /// 
+    /// TargetIndex.A = Thing to haul.
+    /// TargetIndex.B = destination cell as IntVec3. May refer to a stockpile.
+    /// 
+    /// As we are explicitly looking for a location with a SlotGroup, this logic will not apply to any
+    /// storage building that uses another mechanism to provide storage.
+    /// 
+    /// </summary>
     [HarmonyPatch(typeof(JobDriver_HaulToCell), "MakeNewToils")]
     public static class JobDriver_HaulToCell_MakeNewToils_Patch {
         public static IEnumerable<Toil> Postfix(IEnumerable<Toil> values, JobDriver_HaulToCell __instance) {

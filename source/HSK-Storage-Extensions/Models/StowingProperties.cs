@@ -7,8 +7,6 @@ namespace HSK_Storage_Extensions {
     /// Note that timeStoringTakes or the vanilla equivalent haulToContainerDuration is handled
     /// by the actual vanilla building properties.
     /// 
-    /// For buildings that are "quick to store" a single item type and only allow that one item type,
-    /// set a filter and a low haulToContainerDuration instead of using quickToStoreItems.
     /// </summary>
     public class StowingProperties {
         public int baseStowTicks = 0;

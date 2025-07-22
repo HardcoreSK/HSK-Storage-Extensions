@@ -32,15 +32,15 @@ namespace HSK_Storage_Extensions {
                 timeToStow += stowingProperties.additionalTicksPerStoredStack * stacksInStorage;
             }
 
-            if (stowingProperties.quickToStoreItems != null) {
-                if (stowingProperties.quickToStoreItems.Allows(thingToStow)) {
-                    timeToStow = (int) Mathf.Floor(timeToStow * stowingProperties.quickStoreDurationFactor);
+            if (stowingProperties.quickToStowItems != null) {
+                if (stowingProperties.quickToStowItems.Allows(thingToStow)) {
+                    timeToStow = (int) Mathf.Floor(timeToStow * stowingProperties.quickStowDurationFactor);
                 }
             }
 
-            if (stowingProperties.slowToStoreItems != null) {
-                if (stowingProperties.slowToStoreItems.Allows(thingToStow)) {
-                    timeToStow = (int)Mathf.Floor(timeToStow * stowingProperties.slowStoreDurationFactor);
+            if (stowingProperties.slowToStowItems != null) {
+                if (stowingProperties.slowToStowItems.Allows(thingToStow)) {
+                    timeToStow = (int)Mathf.Floor(timeToStow * stowingProperties.slowStowDurationFactor);
                 }
             }
             timeToStow = Math.Max(timeToStow, stowingProperties.minimumStowTicks);
