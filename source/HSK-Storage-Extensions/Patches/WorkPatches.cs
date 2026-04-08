@@ -1,4 +1,6 @@
-﻿using HarmonyLib;
+﻿using AdaptiveStorage;
+using AdaptiveStorage.PrintDatas;
+using HarmonyLib;
 using RimWorld;
 using RimWorld.Planet;
 using System;
@@ -26,6 +28,8 @@ namespace HSK_Storage_Extensions {
     /// storage building that uses another mechanism to provide storage.
     /// 
     /// </summary>
+    ///
+    /*
     [HarmonyPatch(typeof(JobDriver_HaulToCell), "MakeNewToils")]
     public static class JobDriver_HaulToCell_MakeNewToils_Patch {
         public static IEnumerable<Toil> Postfix(IEnumerable<Toil> values, JobDriver_HaulToCell __instance) {
@@ -48,5 +52,203 @@ namespace HSK_Storage_Extensions {
             }
            
         }
+    }*/
+
+    [HarmonyPatch(typeof(PawnRenderer), "GetDrawParms")]
+    public static class Patch_PawnRenderer_GetDrawParms
+    {
+        static void Postfix(ref PawnDrawParms __result)
+        {
+            var pawn = __result.pawn;
+            if (pawn?.Corpse == null) return;
+
+            var corpse = pawn.Corpse;
+
+            var storage = corpse.StoringThing() as ThingClass;
+            if (storage == null) return;
+
+            var graphics = Util.GetGraphicsDef(storage.def);
+            if (graphics == null) return;
+
+            var storedThings = storage.StoredThings;
+            if (storedThings == null) return;
+
+            StorageCell cell = storedThings.StoragePositionOf(corpse);
+
+            int rowIndex = cell.AsIntVec2.z;
+            int colIndex = cell.AsIntVec2.x;
+
+            var columns = graphics.itemGraphics.columns;
+            if (colIndex >= columns.Count) return;
+
+            var column = columns[colIndex];
+            if (rowIndex >= column.rows.Count) return;
+
+            var row = column.rows[rowIndex];
+
+            Vector2 scale2D = row.drawScale;
+
+            // --- Pawn size normalization ---
+            Vector2 drawSize = pawn.Drawer.renderer.BodyGraphic.drawSize;
+            float size = Mathf.Max(drawSize.x, drawSize.y);
+
+            // Safety
+            if (size < 0.01f) size = 1f;
+
+            // Normalize so bigger animals scale down
+            float normalized = 0.7f;
+
+            float threshold = 1.2f; // tweak this
+
+            if (!pawn.RaceProps.Humanlike && size > threshold)
+            {
+                normalized = threshold / Mathf.Sqrt(size);
+            }
+
+            // --- Extract current matrix ---
+            Matrix4x4 m = __result.matrix;
+
+            Vector3 pos = m.GetColumn(3);
+            pos.y += row.drawOffset.y;
+
+            // Reconstruct rotation safely
+            Quaternion rot = Quaternion.LookRotation(
+                m.GetColumn(2),
+                m.GetColumn(1)
+            );
+
+            // Apply scale (X = width, Z = depth)
+            Vector3 scale = new Vector3(
+                scale2D.x * normalized,
+                1f,
+                scale2D.y * normalized
+            );
+
+            // Extract existing scale
+            Vector3 currentScale = new Vector3(
+                m.GetColumn(0).magnitude,
+                m.GetColumn(1).magnitude,
+                m.GetColumn(2).magnitude
+            );
+
+            // Apply your scale ON TOP
+            Vector3 finalScale = new Vector3(
+                currentScale.x * scale.x,
+                currentScale.y,
+                currentScale.z * scale.z
+            );
+
+            __result.matrix = Matrix4x4.TRS(pos, rot, finalScale);
+        }
     }
+
+    [HarmonyPatch(typeof(PawnRenderer), "BodyAngle")]
+    public static class Patch_PawnRenderer_BodyAngle
+    {
+        static void Postfix(PawnRenderer __instance, ref float __result)
+        {
+            var pawn = Traverse.Create(__instance).Field("pawn").GetValue<Pawn>();
+            if (pawn?.Corpse == null) return;
+
+            var corpse = pawn.Corpse;
+
+            var storage = corpse.StoringThing() as ThingClass;
+            if (storage == null) return;
+
+            var graphics = Util.GetGraphicsDef(storage.def);
+            if (graphics == null) return;
+
+            var storedThings = storage.StoredThings;
+            if (storedThings == null) return;
+
+            StorageCell cell = storedThings.StoragePositionOf(corpse);
+
+            int rowIndex = cell.AsIntVec2.z;
+            int colIndex = cell.AsIntVec2.x;
+
+            var columns = graphics.itemGraphics.columns;
+            if (colIndex >= columns.Count) return;
+
+            var column = columns[colIndex];
+            if (rowIndex >= column.rows.Count) return;
+
+            float rotation = column.rows[rowIndex].rotation;
+
+            int hash = Gen.HashCombineInt(pawn.thingIDNumber, storage.thingIDNumber);
+            bool flipped = (hash & 1) == 0;
+
+            if (storage.Rotation == Rot4.North || storage.Rotation == Rot4.South)
+                flipped = !flipped;
+
+            if (!flipped)
+                rotation += 180f;
+
+            if (pawn.RaceProps.Humanlike && flipped)
+                rotation += 90f;
+            else if (pawn.RaceProps.Humanlike && !flipped)
+                rotation -= 90f;
+
+            __result = rotation;
+        }
+    }
+
+    [HarmonyPatch(typeof(PawnRenderer), "LayingFacing")]
+    public static class Patch_PawnRenderer_LayingFacing
+    {
+        static bool Prefix(PawnRenderer __instance, ref Rot4 __result)
+        {
+            var pawn = Traverse.Create(__instance).Field("pawn").GetValue<Pawn>();
+            if (pawn?.Corpse == null) return true;
+
+            var corpse = pawn.Corpse;
+            var storage = corpse.StoringThing() as ThingClass;
+            if (storage == null) return true;
+
+            var graphics = Util.GetGraphicsDef(storage.def);
+            if (graphics == null) return true;
+
+            int hash = Gen.HashCombineInt(pawn.thingIDNumber, storage.thingIDNumber);
+            bool flipped = (hash & 1) == 0;
+
+            if (storage.Rotation == Rot4.North || storage.Rotation == Rot4.South)
+                flipped = !flipped;
+
+            __result = flipped ? Rot4.East : Rot4.West;
+            //__result = (Gen.HashCombineInt(pawn.thingIDNumber, 12345) % 2 == 0)
+            //    ? Rot4.East
+            //    : Rot4.West;
+
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayDataLoader), "LoadAllPlayData")]
+    static class ClearCachePatch
+    {
+        static void Postfix()
+        {
+            Util.graphicsCache.Clear();
+        }
+    }
+
+    public class Util
+    {
+        public static Dictionary<ThingDef, GraphicsDef> graphicsCache = new Dictionary<ThingDef, GraphicsDef>();
+
+        public static GraphicsDef GetGraphicsDef(ThingDef def)
+        {
+            if (def == null) return null;
+
+            if (!graphicsCache.TryGetValue(def, out var graphics))
+            {
+                graphics = DefDatabase<GraphicsDef>.AllDefsListForReading
+                    .Find(s => s.targetDef == def);
+
+                graphicsCache[def] = graphics; // cache even if null (important)
+            }
+
+            return graphics;
+        }
+    }
+
 }
