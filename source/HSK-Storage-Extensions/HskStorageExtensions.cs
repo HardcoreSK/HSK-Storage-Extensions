@@ -15,6 +15,10 @@ namespace HSK_Storage_Extensions{
             Harmony harmony = new Harmony("hsk.extensions.storage");
             harmony.PatchAll();
 
+            LongEventHandler.ExecuteWhenFinished(() =>
+            {
+                Util.Init();
+            });
         }
     }
 }

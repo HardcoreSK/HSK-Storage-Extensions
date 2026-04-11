@@ -5,6 +5,7 @@ using RimWorld;
 using RimWorld.Planet;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Unity.Jobs;
 using UnityEngine;
 using Verse;
 using Verse.AI;
+using Verse.Noise;
 
 namespace HSK_Storage_Extensions {
 
@@ -233,21 +235,26 @@ namespace HSK_Storage_Extensions {
 
     public class Util
     {
-        public static Dictionary<ThingDef, GraphicsDef> graphicsCache = new Dictionary<ThingDef, GraphicsDef>();
+        public static Dictionary<ThingDef, GraphicsDef> graphicsCache;
+
+        public static void Init()
+        {
+            graphicsCache = new Dictionary<ThingDef, GraphicsDef>();
+
+            foreach (var def in DefDatabase<GraphicsDef>.AllDefsListForReading)
+            {
+                if (def.targetDef != null)
+                    graphicsCache[def.targetDef] = def;
+            }
+        }
 
         public static GraphicsDef GetGraphicsDef(ThingDef def)
         {
             if (def == null) return null;
 
-            if (!graphicsCache.TryGetValue(def, out var graphics))
-            {
-                graphics = DefDatabase<GraphicsDef>.AllDefsListForReading
-                    .Find(s => s.targetDef == def);
+            graphicsCache.TryGetValue(def, out var result);
+            return result;
 
-                graphicsCache[def] = graphics; // cache even if null (important)
-            }
-
-            return graphics;
         }
     }
 
