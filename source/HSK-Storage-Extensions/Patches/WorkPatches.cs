@@ -224,15 +224,6 @@ namespace HSK_Storage_Extensions {
         }
     }
 
-    [HarmonyPatch(typeof(PlayDataLoader), "LoadAllPlayData")]
-    static class ClearCachePatch
-    {
-        static void Postfix()
-        {
-            Util.graphicsCache.Clear();
-        }
-    }
-
     public class Util
     {
         public static Dictionary<ThingDef, GraphicsDef> graphicsCache;
